@@ -4,14 +4,17 @@ import pandas as pd
 import plotly.graph_objects as go
 
 if __name__ == "__main__":
-    print(f"o dataset possui {dataset.shape[0]} linhas e {dataset.shape[1]} colunas.")
-    print(f"Existem no total {dataset[dataset.isnull().any(axis=1)].drop_duplicates().shape[0]} registros com pelo menos um valor faltante.")
-    
-    dataset_copia: pd.DataFrame = dataset.copy().dropna()
-    
-    print(f"Após remover os registros com valores faltantes, o dataset possui {dataset_copia.shape[0]} linhas e {dataset_copia.shape[1]} colunas.")
-    print(f"Existem no total {dataset_copia[dataset_copia.isnull().any(axis=1)].drop_duplicates().shape[0]} registros com pelo menos um valor faltante.")
-    
+    # Preenchimento de valores nulos
+    dataset_copia = dataset.copy()
+    for col in dataset_copia.select_dtypes(include=['float64', 'int64']).columns:
+        mediana = dataset_copia[col].median()
+        dataset_copia[col].fillna(mediana, inplace=True)
+
+    for col in dataset_copia.select_dtypes(include='object').columns:
+        if not dataset_copia[col].mode().empty:
+            moda = dataset_copia[col].mode()[0]
+            dataset_copia[col].fillna(moda, inplace=True)
+
     # Identifica tipos de variáveis
     var_num: list[str] = dataset_copia.select_dtypes(include=['float64', 'int64']).columns.tolist()
     var_cat: list[str] = dataset_copia.select_dtypes(include='object').columns.tolist()
@@ -22,11 +25,13 @@ if __name__ == "__main__":
     traces: list[go.Bar | go.Pie] = []
 
     # === VARIÁVEIS NUMÉRICAS ===
+    stats_var_num: dict[str, pd.Series] = {}
+    for coluna in var_num:
+        stats: pd.Series = dataset_copia[coluna].describe()
+        stats_var_num[coluna] = stats
 
-    ## === Extraindo as estatísticas de cada variável numérica ===
-    df_stats_var_num: pd.DataFrame = dataset_copia.describe().transpose()
+    df_stats_var_num: pd.DataFrame = pd.DataFrame(stats_var_num).transpose()
 
-    # Cria traços para variáveis numéricas
     for var in df_stats_var_num.index:
         valores: dict[str, float] = {
             'Média': df_stats_var_num.loc[var, 'mean'],
@@ -50,7 +55,7 @@ if __name__ == "__main__":
     # === VARIÁVEIS CATEGÓRICAS ===
     for col in var_cat:
         valores: pd.Series = dataset_copia[col].value_counts(normalize=True)
-
+        
         trace: go.Pie = go.Pie(
             labels=valores.index.tolist(),
             values=valores.values.tolist(),
@@ -61,7 +66,7 @@ if __name__ == "__main__":
         fig.add_trace(trace)
         traces.append(trace)
 
-    # === BOTÕES DROPDOWN ===
+        # === BOTÕES DROPDOWN ===
     total_traces: int = len(var_num) + len(var_cat)
     for i, var in enumerate(var_num + var_cat):
         visibility: list[bool] = [False] * total_traces
@@ -84,7 +89,6 @@ if __name__ == "__main__":
             }
         )
 
-
         button: dict[str, Any] = dict(
             label=var,
             method="update",
@@ -102,9 +106,8 @@ if __name__ == "__main__":
             y=1.2,
             yanchor="top"
         )],
-        title={"text": f'Estatísticas Resumidas - {var_num[0]}'},
+        title=f'Estatísticas Resumidas - {var_num[0]}'
     )
 
-    # Exibe apenas o primeiro gráfico
     fig.data[0].visible = True
     fig.show()
