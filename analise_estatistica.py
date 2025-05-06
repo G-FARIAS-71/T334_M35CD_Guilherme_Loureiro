@@ -1,12 +1,20 @@
-from .dataset import dataset
+from dataset import dataset
 from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 
 if __name__ == "__main__":
+    print(f"o dataset possui {dataset.shape[0]} linhas e {dataset.shape[1]} colunas.")
+    print(f"Existem no total {dataset[dataset.isnull().any(axis=1)].drop_duplicates().shape[0]} registros com pelo menos um valor faltante.")
+    
+    dataset_copia: pd.DataFrame = dataset.copy().dropna()
+    
+    print(f"Após remover os registros com valores faltantes, o dataset possui {dataset_copia.shape[0]} linhas e {dataset_copia.shape[1]} colunas.")
+    print(f"Existem no total {dataset_copia[dataset_copia.isnull().any(axis=1)].drop_duplicates().shape[0]} registros com pelo menos um valor faltante.")
+    
     # Identifica tipos de variáveis
-    var_num: list[str] = dataset.select_dtypes(include=['float64', 'int64']).columns.tolist()
-    var_cat: list[str] = dataset.select_dtypes(include='object').columns.tolist()
+    var_num: list[str] = dataset_copia.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    var_cat: list[str] = dataset_copia.select_dtypes(include='object').columns.tolist()
 
     # Armazenar traços e botões
     fig: go.Figure = go.Figure()
@@ -15,13 +23,8 @@ if __name__ == "__main__":
 
     # === VARIÁVEIS NUMÉRICAS ===
 
-    ## === Extraindo as estatísticas excluindo NaN de cada variável numérica ===
-    stats_var_num: dict[str, pd.Series] = {}
-    for coluna in var_num:
-        stats: pd.Series = dataset[coluna].dropna().describe()
-        stats_var_num[coluna] = stats
-
-    df_stats_var_num: pd.DataFrame = pd.DataFrame(stats_var_num).transpose()
+    ## === Extraindo as estatísticas de cada variável numérica ===
+    df_stats_var_num: pd.DataFrame = dataset_copia.describe().transpose()
 
     # Cria traços para variáveis numéricas
     for var in df_stats_var_num.index:
@@ -46,8 +49,8 @@ if __name__ == "__main__":
 
     # === VARIÁVEIS CATEGÓRICAS ===
     for col in var_cat:
-        valores: pd.Series = dataset[col].fillna('desconhecido(a)').value_counts(normalize=True)
-        
+        valores: pd.Series = dataset_copia[col].value_counts(normalize=True)
+
         trace: go.Pie = go.Pie(
             labels=valores.index.tolist(),
             values=valores.values.tolist(),
@@ -67,19 +70,20 @@ if __name__ == "__main__":
         is_numerica: bool = i < len(var_num)
         layout_updates: dict[str, Any] = (
             {
-                "title": f'Estatísticas Resumidas - {var}',
+                "title": {"text": f'Estatísticas Resumidas - {var}'},
                 "xaxis": {"title": "Estatísticas", "visible": True},
                 "yaxis": {"title": "Valor", "visible": True},
                 "showlegend": False
             }
             if is_numerica else
             {
-                "title": f'Proporção Relativa - {var}',
+                "title": {"text": f'Proporção Relativa - {var}'},
                 "xaxis": {"visible": False},
                 "yaxis": {"visible": False},
                 "showlegend": True
             }
         )
+
 
         button: dict[str, Any] = dict(
             label=var,
@@ -98,7 +102,7 @@ if __name__ == "__main__":
             y=1.2,
             yanchor="top"
         )],
-        title=f'Estatísticas Resumidas - {var_num[0]}'
+        title={"text": f'Estatísticas Resumidas - {var_num[0]}'},
     )
 
     # Exibe apenas o primeiro gráfico
