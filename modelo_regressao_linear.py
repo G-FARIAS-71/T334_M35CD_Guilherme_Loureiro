@@ -4,10 +4,7 @@ import pandas as pd
 from pandas import DataFrame, Series
 from statsmodels.regression.linear_model import RegressionResultsWrapper
 
-def ajustar_regressao_linear() -> RegressionResultsWrapper:
-    # Copia original para preservar dataset
-    dados: DataFrame = dataset.copy().dropna()
-
+def ajustar_regressao_linear(dados=dataset.copy().dropna()) -> RegressionResultsWrapper:
     if 'tempo_resposta' not in dados.columns:
         raise ValueError("A coluna 'tempo_resposta' não está presente no conjunto de dados.")
 
